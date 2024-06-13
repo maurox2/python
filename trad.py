@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 import yfinance as yf
 from datetime import datetime
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from prophet import Prophet
 import pandas as pd
 
@@ -54,6 +54,10 @@ def plot_data(data, ticker):
     window.title(f'Grafico Dati Storici di {ticker}')
     canvas = FigureCanvasTkAgg(fig, master=window)
     canvas.draw()
+    
+    # Aggiungi la toolbar per lo zoom e i valori
+    toolbar = NavigationToolbar2Tk(canvas, window)
+    toolbar.update()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
 # Funzione per prevedere i prezzi delle azioni utilizzando Prophet
@@ -88,6 +92,10 @@ def display_forecast(fig, ticker):
     window.title(f'Previsione di {ticker}')
     canvas = FigureCanvasTkAgg(fig, master=window)
     canvas.draw()
+    
+    # Aggiungi la toolbar per lo zoom e i valori
+    toolbar = NavigationToolbar2Tk(canvas, window)
+    toolbar.update()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
 # Finestra principale della GUI
