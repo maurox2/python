@@ -20,6 +20,9 @@ def show_hist_data():
     ticker = ticker_entry.get()
     start_date = start_entry.get()
     end_date = end_entry.get()
+    if not ticker or not start_date or not end_date:
+        messagebox.showerror("Errore", "Per favore, inserisci tutti i campi (Ticker, Data Inizio, Data Fine).")
+        return
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(start=start_date, end=end_date)
@@ -31,6 +34,9 @@ def show_hist_data():
 # Funzione per recuperare e visualizzare i bilanci
 def show_financial_data(data_type):
     ticker = ticker_entry.get()
+    if not ticker:
+        messagebox.showerror("Errore", "Per favore, inserisci il Ticker.")
+        return
     try:
         stock = yf.Ticker(ticker)
         if data_type == "income_stmt":
@@ -66,6 +72,9 @@ def forecast_data():
     start_date = start_entry.get()
     end_date = end_entry.get()
     forecast_end_date = forecast_end_entry.get()
+    if not ticker or not start_date or not end_date or not forecast_end_date:
+        messagebox.showerror("Errore", "Per favore, inserisci tutti i campi (Ticker, Data Inizio, Data Fine, Data Fine Previsione).")
+        return
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(start=start_date, end=end_date)
@@ -98,6 +107,20 @@ def display_forecast(fig, ticker):
     toolbar.update()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+# Funzione per recuperare e visualizzare le notizie
+def show_news():
+    ticker = ticker_entry.get()
+    if not ticker:
+        messagebox.showerror("Errore", "Per favore, inserisci il Ticker.")
+        return
+    try:
+        stock = yf.Ticker(ticker)
+        news = stock.news
+        news_str = "\n\n".join([f"Title: {item['title']}\nLink: {item['link']}\n" for item in news])
+        display_data(news_str, "Notizie Recenti")
+    except Exception as e:
+        messagebox.showerror("Errore", str(e))
+
 # Finestra principale della GUI
 root = tk.Tk()
 root.title("Informazioni Azionarie")
@@ -125,5 +148,6 @@ ttk.Button(root, text="Mostra Bilancio", command=lambda: show_financial_data("in
 ttk.Button(root, text="Mostra Stato Patrimoniale", command=lambda: show_financial_data("balance_sheet")).grid(row=6, column=0, columnspan=2, pady=5, padx=10, sticky='ew')
 ttk.Button(root, text="Mostra Flusso di Cassa", command=lambda: show_financial_data("cashflow")).grid(row=7, column=0, columnspan=2, pady=5, padx=10, sticky='ew')
 ttk.Button(root, text="Prevedi Prezzi delle Azioni", command=forecast_data).grid(row=8, column=0, columnspan=2, pady=5, padx=10, sticky='ew')
+ttk.Button(root, text="Mostra Notizie", command=show_news).grid(row=9, column=0, columnspan=2, pady=5, padx=10, sticky='ew')
 
 root.mainloop()
