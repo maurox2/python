@@ -1,0 +1,249 @@
+import tkinter as tk
+from tkinter import messagebox, filedialog
+import pandas as pd
+import zebra
+from PIL import Image, ImageDraw, ImageFont, ImageTk
+import barcode
+from barcode.writer import ImageWriter
+
+# Global variable to store the DataFrame
+df = pd.DataFrame()
+
+# Function to create an alphanumeric range including 1-9, 01-09, and A-Z
+def alfanumerico_range(start, end):
+    # Define numeric part with and without leading zeros
+    numeric_part = [str(i) for i in range(1, 10)] + [f"{i:02}" for i in range(1, 10)]
+    alphabet_part = [chr(i) for i in range(ord('A'), ord('Z') + 1)]
+    alphanumeric_values = numeric_part + alphabet_part
+    start_index = alphanumeric_values.index(start)
+    end_index = alphanumeric_values.index(end) + 1
+    return alphanumeric_values[start_index:end_index]
+
+# Update the range generation in the crea_excel function
+def crea_excel():
+    global df
+    try:
+        # Get input values
+        area_start = area_start_entry.get()
+        area_end = area_end_entry.get()
+        scaffale_start = scaffale_start_entry.get()
+        scaffale_end = scaffale_end_entry.get()
+        campata_start = campata_start_entry.get()
+        campata_end = campata_end_entry.get()
+        piano_start = piano_start_entry.get()
+        piano_end = piano_end_entry.get()
+        posizione_start = posizione_start_entry.get()
+        posizione_end = posizione_end_entry.get()
+        file_path = file_path_entry.get()
+
+        if not file_path:
+            messagebox.showerror("Errore", "Per favore, seleziona un percorso valido per il file.")
+            return
+
+        # Generate data
+        data = []
+        area_range = alfanumerico_range(area_start, area_end) if area_start and area_end else [""]
+        scaffale_range = alfanumerico_range(scaffale_start, scaffale_end) if scaffale_start and scaffale_end else [""]
+
+        # Generate ranges with both 1-9 and 01-09, letters if necessary
+        campata_range = alfanumerico_range(campata_start, campata_end) if campata_start and campata_end else [""]
+        piano_range = alfanumerico_range(piano_start, piano_end) if piano_start and piano_end else [""]
+        posizione_range = alfanumerico_range(posizione_start, posizione_end) if posizione_start and posizione_end else [""]
+
+        for area in area_range:
+            for scaffale in scaffale_range:
+                for campata in campata_range:
+                    for piano in piano_range:
+                        for posizione in posizione_range:
+                            data.append([
+                                area,
+                                scaffale,
+                                campata,
+                                piano,
+                                posizione
+                            ])
+
+        # Create DataFrame and save to Excel
+        df = pd.DataFrame(data, columns=["Area", "Scaffale", "Campata", "Piano", "Posizione"])
+        df.to_excel(file_path, index=False)
+        messagebox.showinfo("Successo", "File Excel creato con successo!")
+
+    except ValueError:
+        messagebox.showerror("Errore", "Per favore, inserisci valori validi.")
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante la creazione del file Excel: {e}")
+
+# Function to generate a label preview
+def generate_label_preview(row):
+    label_width, label_height = 400, 200
+    image = Image.new("RGB", (label_width, label_height), "white")
+    draw = ImageDraw.Draw(image)
+
+    font = ImageFont.load_default()
+    draw.text((10, 10), "AREA", fill="black", font=font)
+    draw.text((80, 10), "SCAFFALE", fill="black", font=font)
+    draw.text((180, 10), "CAMPATA", fill="black", font=font)
+    draw.text((280, 10), "PIANO", fill="black", font=font)
+    draw.text((360, 10), "POSIZIONE", fill="black", font=font)
+
+    draw.text((10, 30), row['Area'], fill="black", font=font)
+    draw.text((80, 30), row['Scaffale'], fill="black", font=font)
+    draw.text((180, 30), row['Campata'], fill="black", font=font)
+    draw.text((280, 30), row['Piano'], fill="black", font=font)
+    draw.text((360, 30), row['Posizione'], fill="black", font=font)
+
+    barcode_data = f"{row['Area']}{row['Scaffale']}{row['Campata']}{row['Piano']}{row['Posizione']}"
+    code39 = barcode.Code39(barcode_data, writer=ImageWriter(), add_checksum=False)
+    barcode_image = code39.render(writer_options={'module_height': 15, 'module_width': 0.4, 'font_size': 8, 'text_distance': 1})
+    barcode_image = barcode_image.resize((label_width - 20, 60))
+    image.paste(barcode_image, (10, 70))
+
+    return image
+
+# Function to show the label preview
+def show_label_preview():
+    try:
+        if df.empty:
+            messagebox.showerror("Errore", "Per favore, crea il file Excel prima di visualizzare l'anteprima.")
+            return
+
+        row = df.iloc[0]
+        label_image = generate_label_preview(row)
+
+        preview_window = tk.Toplevel(root)
+        preview_window.title("Anteprima Etichetta")
+
+        label_photo = ImageTk.PhotoImage(label_image)
+        label_widget = tk.Label(preview_window, image=label_photo)
+        label_widget.image = label_photo
+        label_widget.pack()
+
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante la visualizzazione dell'anteprima: {e}")
+
+# Function to print labels on Zebra printer
+def print_labels():
+    global df
+    try:
+        selected_printer = printer_var.get()
+        if not selected_printer:
+            messagebox.showerror("Errore", "Per favore, seleziona una stampante.")
+            return
+
+        z = zebra.Zebra()
+        z.setqueue(selected_printer)
+
+        for index, row in df.iterrows():
+            barcode_data = f"{row['Area']}{row['Scaffale']}{row['Campata']}{row['Piano']}{row['Posizione']}"
+            label = f"""
+^XA
+^FO10,10^A0N36,36^FD{"AREA"}^FS
+^FO30,50^A0N36,36^FD{row['Area']}^FS
+^FO140,10^A0N36,36^FD{"SCAFF"}^FS
+^FO170,50^A0N36,36^FD{row['Scaffale']}^FS
+^FO290,10^A0N36,36^FD{"CAMP"}^FS
+^FO310,50^A0N36,36^FD{row['Campata']}^FS
+^FO450,10^A0N36,36^FD{"PIANO"}^FS
+^FO480,50^A0N36,36^FD{row['Piano']}^FS
+^FO600,10^A0N36,36^FD{"POS"}^FS
+^FO630,50^A0N36,36^FD{row['Posizione']}^FS
+^FO10,90^BY3
+^BCN,100,Y,N,N
+^FD{barcode_data}^FS
+^XZ
+"""
+            z.output(label)
+        messagebox.showinfo("Successo", "Etichette stampate con successo!")
+    except zebra.ZebraError as ze:
+        messagebox.showerror("Errore Zebra", f"Errore durante la stampa delle etichette: {ze}")
+    except Exception as e:
+        messagebox.showerror("Errore", f"Errore durante la stampa delle etichette: {e}")
+
+# Function to open the file dialog and select the file path
+def seleziona_percorso():
+    file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
+    if file_path:
+        file_path_entry.delete(0, tk.END)
+        file_path_entry.insert(0, file_path)
+
+# Function to get available printers
+def get_printers():
+    z = zebra.Zebra()
+    return z.getqueues()
+
+# Create the main window
+root = tk.Tk()
+root.title("Creazione Etichette Magazzino")
+
+# Create input fields
+tk.Label(root, text="Area da").grid(row=0, column=0)
+area_start_entry = tk.Entry(root)
+area_start_entry.grid(row=0, column=1)
+
+tk.Label(root, text="Area a").grid(row=0, column=2)
+area_end_entry = tk.Entry(root)
+area_end_entry.grid(row=0, column=3)
+
+tk.Label(root, text="Scaffale da").grid(row=1, column=0)
+scaffale_start_entry = tk.Entry(root)
+scaffale_start_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Scaffale a").grid(row=1, column=2)
+scaffale_end_entry = tk.Entry(root)
+scaffale_end_entry.grid(row=1, column=3)
+
+tk.Label(root, text="Campata da").grid(row=2, column=0)
+campata_start_entry = tk.Entry(root)
+campata_start_entry.grid(row=2, column=1)
+
+tk.Label(root, text="Campata a").grid(row=2, column=2)
+campata_end_entry = tk.Entry(root)
+campata_end_entry.grid(row=2, column=3)
+
+tk.Label(root, text="Piano da").grid(row=3, column=0)
+piano_start_entry = tk.Entry(root)
+piano_start_entry.grid(row=3, column=1)
+
+tk.Label(root, text="Piano a").grid(row=3, column=2)
+piano_end_entry = tk.Entry(root)
+piano_end_entry.grid(row=3, column=3)
+
+tk.Label(root, text="Posizione da").grid(row=4, column=0)
+posizione_start_entry = tk.Entry(root)
+posizione_start_entry.grid(row=4, column=1)
+
+tk.Label(root, text="Posizione a").grid(row=4, column=2)
+posizione_end_entry = tk.Entry(root)
+posizione_end_entry.grid(row=4, column=3)
+
+tk.Label(root, text="Percorso File").grid(row=5, column=0)
+file_path_entry = tk.Entry(root)
+file_path_entry.grid(row=5, column=1, columnspan=2, sticky="we")
+
+sfoglia_button = tk.Button(root, text="Sfoglia", command=seleziona_percorso)
+sfoglia_button.grid(row=5, column=3)
+
+# Create printer selection dropdown
+tk.Label(root, text="Seleziona Stampante").grid(row=6, column=0)
+printer_var = tk.StringVar(root)
+
+# Get list of printers
+printers = get_printers()
+if not printers:
+    printers = ["Nessuna stampante disponibile"]
+
+printer_menu = tk.OptionMenu(root, printer_var, *printers)
+printer_menu.grid(row=6, column=1, columnspan=3, sticky="we")
+
+# Create buttons
+crea_button = tk.Button(root, text="Crea Excel", command=crea_excel)
+crea_button.grid(row=7, column=0, columnspan=4, pady=10)
+
+anteprima_button = tk.Button(root, text="Anteprima", command=show_label_preview)
+anteprima_button.grid(row=8, column=0, columnspan=4, pady=10)
+
+stampa_button = tk.Button(root, text="Stampa", command=print_labels)
+stampa_button.grid(row=9, column=0, columnspan=4, pady=10)
+
+# Start the Tkinter main loop
+root.mainloop()
