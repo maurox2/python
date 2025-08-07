@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tile Catalog</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Catalogo Piastrelle</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Colore</th>
+            <th>Dimensione</th>
+        </tr>
+        {% for tile in tiles %}
+        <tr>
+            <td>{{ tile.id }}</td>
+            <td>{{ tile.name }}</td>
+            <td>{{ tile.color }}</td>
+            <td>{{ tile.size }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
